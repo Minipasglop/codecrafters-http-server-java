@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 
 import static constants.HttpConstants.*;
 import static constants.PathConstants.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HttpServer {
 
@@ -52,18 +53,18 @@ public class HttpServer {
     private void handleRequest(Socket clientSocket, String basePath) throws IOException {
         System.out.println("accepted new connection");
         HttpResponse httpResponse = HttpResponse.builder()
-                .status(buildResponseStatus(STATUS_NOT_FOUND).getBytes())
-                .headers(buildEmptyResponseHeaders().getBytes())
-                .body(buildEmptyResponseBody().getBytes())
+                .status(buildResponseStatus(STATUS_NOT_FOUND).getBytes(UTF_8))
+                .headers(buildEmptyResponseHeaders().getBytes(UTF_8))
+                .body(buildEmptyResponseBody().getBytes(UTF_8))
                 .build();
         try {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String line = bufferedReader.readLine();
             System.out.println("Request : " + line);
             String[] httpRequest = line.split(" ", 0);
-            // httpRequest[0] : HTTP Method
-            // httpRequest[1] : Path
-            // httpRequest[2] : HTTP Options
+            String requestMethod = httpRequest[0];
+            String requestPath = httpRequest[1];
+            String requestOptions = httpRequest[2];
 
             List<String> headers = new ArrayList<>();
             while (true) {
@@ -81,38 +82,37 @@ public class HttpServer {
             System.out.println("Payload : " + payload.toString());
             String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : "";
             boolean isEncodingValid = validateEncoding(acceptedEncoding);
-            if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
-                httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes());
-                httpResponse.setHeaders(buildEmptyResponseHeaders().getBytes());
-                httpResponse.setBody(buildEmptyResponseBody().getBytes());
-            } else if (httpRequest[1].startsWith(ECHO_PATH)) {
-                String textToEcho = httpRequest[1].substring(httpRequest[1].lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
+            if (requestPath.equals("/") || requestPath.isBlank()) {
+                httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
+                httpResponse.setHeaders(buildEmptyResponseHeaders().getBytes(UTF_8));
+                httpResponse.setBody(buildEmptyResponseBody().getBytes(UTF_8));
+            } else if (requestPath.startsWith(ECHO_PATH)) {
+                String textToEcho = requestPath.substring(requestPath.lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
                 byte[] body = buildResponseBodyHandlingEncoding(textToEcho, isEncodingValid);
-                httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes());
-                httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, body.length).getBytes());
+                httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
+                httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, body.length).getBytes(UTF_8));
                 httpResponse.setBody(body);
-            } else if (httpRequest[1].equals(USER_AGENT_PATH)) {
+            } else if (requestPath.equals(USER_AGENT_PATH)) {
                 String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
-                httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes());
-                httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, headerToPrintInBody.length()).getBytes());
-                httpResponse.setBody(buildResponseBody(headerToPrintInBody).getBytes());
-            } else if (httpRequest[1].startsWith(FILE_PATH)) {
-                if (httpRequest[0].equals(GET_METHOD)) {
-                    String filePath = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
+                httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
+                httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, headerToPrintInBody.length()).getBytes(UTF_8));
+                httpResponse.setBody(buildResponseBody(headerToPrintInBody).getBytes(UTF_8));
+            } else if (requestPath.startsWith(FILE_PATH)) {
+                String filePath = requestPath.substring(requestPath.lastIndexOf(FILE_PATH) + FILE_PATH.length());
+                if (requestMethod.equals(GET_METHOD)) {
                     String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
                     if (!fileContent.isBlank()) {
-                        httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes());
-                        httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, isEncodingValid, fileContent.length()).getBytes());
-                        httpResponse.setBody(buildResponseBody(fileContent).getBytes());
+                        httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
+                        httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, isEncodingValid, fileContent.length()).getBytes(UTF_8));
+                        httpResponse.setBody(buildResponseBody(fileContent).getBytes(UTF_8));
                     }
-                } else if (httpRequest[0].equals(POST_METHOD)) {
-                    String fileName = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(basePath + fileName));
+                } else if (requestMethod.equals(POST_METHOD)) {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(basePath + filePath));
                     writer.write(payload.toString());
                     writer.close();
-                    httpResponse.setStatus(buildResponseStatus(STATUS_OK_CREATED).getBytes());
-                    httpResponse.setHeaders(buildEmptyResponseHeaders().getBytes());
-                    httpResponse.setBody(buildEmptyResponseBody().getBytes());
+                    httpResponse.setStatus(buildResponseStatus(STATUS_OK_CREATED).getBytes(UTF_8));
+                    httpResponse.setHeaders(buildEmptyResponseHeaders().getBytes(UTF_8));
+                    httpResponse.setBody(buildEmptyResponseBody().getBytes(UTF_8));
                 }
             }
         } catch (Exception e) {
@@ -121,8 +121,6 @@ public class HttpServer {
             clientSocket.getOutputStream().write(httpResponse.getStatus());
             clientSocket.getOutputStream().write(httpResponse.getHeaders());
             clientSocket.getOutputStream().write(httpResponse.getBody());
-            clientSocket.getOutputStream().flush();
-            clientSocket.close();
         }
     }
 
@@ -159,7 +157,7 @@ public class HttpServer {
 
     private byte[] buildResponseBodyHandlingEncoding(String body, boolean encodedBody) {
         if (!encodedBody) {
-            return body.getBytes();
+            return body.getBytes(UTF_8);
         } else {
             try {
                 return GZIPCompression.compress(body);
