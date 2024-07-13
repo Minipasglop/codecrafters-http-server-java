@@ -81,7 +81,11 @@ public class HttpServer {
                 response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
             } else if (httpRequest[1].startsWith(ECHO_PATH)) {
                 String textToEcho = httpRequest[1].substring(httpRequest[1].lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
-                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, textToEcho.length()) + buildResponseBodyHandlingEncoding(textToEcho, isEncodingValid);
+                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, textToEcho.length());
+                clientSocket.getOutputStream().write(response.getBytes());
+                clientSocket.getOutputStream().write(buildResponseBodyHandlingEncoding(textToEcho, isEncodingValid));
+                clientSocket.getOutputStream().flush();
+                clientSocket.close();
             } else if (httpRequest[1].equals(USER_AGENT_PATH)) {
                 String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
                 response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
