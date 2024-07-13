@@ -5,6 +5,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Main {
+
+    public static final String CRLF = "\r\n";
+
     public static void main(String[] args) {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
         System.out.println("Logs from your program will appear here!");
@@ -21,14 +24,28 @@ public class Main {
             // httpRequest[0] : HTTP Method
             // httpRequest[1] : Path
             // httpRequest[2] : HTTP Options
+            String response = "";
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
-                clientSocket.getOutputStream().write("HTTP/1.1 200 OK\r\n\r\n".getBytes());
+                response = buildResponseStatus("200 OK") + buildResponseHeaders("") + buildResponseBody("");
             } else {
-                clientSocket.getOutputStream().write("HTTP/1.1 404 Not Found\r\n\r\n".getBytes());
+                response = buildResponseStatus("404 Not Found") + buildResponseHeaders("") + buildResponseBody("");
             }
+            clientSocket.getOutputStream().write(response.getBytes());
             System.out.println("accepted new connection");
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         }
+    }
+
+    private static String buildResponseStatus(String status) {
+        return "HTTP/1.1 " + status + CRLF;
+    }
+
+    private static String buildResponseHeaders(String headers) {
+        return headers + CRLF;
+    }
+
+    private static String buildResponseBody(String body) {
+        return body + CRLF;
     }
 }
