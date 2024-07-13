@@ -90,7 +90,7 @@ public class HttpServer {
                 String textToEcho = requestPath.substring(requestPath.lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
                 byte[] body = buildResponseBodyHandlingEncoding(textToEcho, isEncodingValid);
                 httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
-                httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, body.length + 1).getBytes(UTF_8));
+                httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, body.length).getBytes(UTF_8));
                 httpResponse.setBody(body);
             } else if (requestPath.equals(USER_AGENT_PATH)) {
                 String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
