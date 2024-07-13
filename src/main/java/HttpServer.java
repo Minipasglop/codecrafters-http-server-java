@@ -1,6 +1,4 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -61,6 +59,7 @@ public class HttpServer {
             // httpRequest[0] : HTTP Method
             // httpRequest[1] : Path
             // httpRequest[2] : HTTP Options
+
             List<String> headers = new ArrayList<>();
             while (true) {
                 line = bufferedReader.readLine();
@@ -68,6 +67,10 @@ public class HttpServer {
                     break;
                 }
                 headers.add(line);
+            }
+            StringBuilder payload = new StringBuilder();
+            while (bufferedReader.ready()) {
+                payload.append((char) bufferedReader.read());
             }
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
                 response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
@@ -78,10 +81,18 @@ public class HttpServer {
                 String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
                 response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
             } else if (httpRequest[1].startsWith(FILE_PATH)) {
-                String filePath = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
-                String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
-                if (!fileContent.isBlank()) {
-                    response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, fileContent.length()) + buildResponseBody(fileContent);
+                if (httpRequest[0].equals(GET_METHOD)) {
+                    String filePath = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
+                    String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
+                    if (!fileContent.isBlank()) {
+                        response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, fileContent.length()) + buildResponseBody(fileContent);
+                    }
+                } else if (httpRequest[0].equals(POST_METHOD)) {
+                    String fileName = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(basePath + fileName));
+                    writer.write(payload.toString());
+                    writer.close();
+                    response = buildResponseStatus(STATUS_OK_CREATED) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
                 }
             }
             System.out.println("accepted new connection");
