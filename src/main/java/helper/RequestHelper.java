@@ -18,17 +18,18 @@ public class RequestHelper {
         return CRLF;
     }
 
-    public static boolean validateEncoding(String encoding) {
+    public static boolean validateEncodingFromHeaders(List<String> headers) {
+        String encoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : "";
         List<String> encodingOptions = Arrays.stream(encoding.split(", ", 0)).toList();
         return encodingOptions.contains(SUPPORTED_ENCODING_OPTIONS);
     }
 
-    public static String buildResponseHeaders(String contentType, boolean handleEncoding, Integer contentLength) {
+    public static String buildResponseHeaders(String contentType, boolean isEncodingEnabled, Integer contentLength) {
         if (contentType == null || contentLength == null) {
             return CRLF;
         }
         String contentTypeHeader = "Content-Type: " + contentType + CRLF;
-        String contentEncodingHeader = handleEncoding ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
+        String contentEncodingHeader = isEncodingEnabled ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
         String contentLengthHeader = "Content-Length: " + contentLength + CRLF;
         return contentEncodingHeader +  contentTypeHeader + contentLengthHeader + CRLF;
     }

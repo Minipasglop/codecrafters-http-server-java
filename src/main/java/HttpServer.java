@@ -19,6 +19,8 @@ public class HttpServer {
 
     private final int port;
 
+    private String basePath;
+
     private final ExecutorService executorService;
 
     public HttpServer(int port, final int socketAmount) {
@@ -37,10 +39,10 @@ public class HttpServer {
                         String path = "";
                         if (args.length >= 2) {
                             if (Objects.equals(args[0], "--directory")) {
-                                path = args[1];
+                                this.basePath = args[1];
                             }
                         }
-                        handleRequest(clientSocket, path);
+                        handleRequest(clientSocket);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -51,8 +53,7 @@ public class HttpServer {
         }
     }
 
-    private void handleRequest(Socket clientSocket, String basePath) throws IOException {
-        System.out.println("accepted new connection");
+    private void handleRequest(Socket clientSocket) throws IOException {
         HttpResponse httpResponse = HttpResponse.builder()
                 .status(buildResponseStatus(STATUS_NOT_FOUND).getBytes(UTF_8))
                 .headers(buildEmptyResponseHeaders().getBytes(UTF_8))
@@ -62,7 +63,6 @@ public class HttpServer {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String bufferLine = bufferedReader.readLine();
 
-            System.out.println("Request : " + bufferLine);
             String[] httpRequest = bufferLine.split(" ", 0);
             String requestMethod = httpRequest[0];
             String requestPath = httpRequest[1];
@@ -81,17 +81,16 @@ public class HttpServer {
                 payload.append((char) bufferedReader.read());
             }
 
-            String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : "";
-            boolean isEncodingValid = validateEncoding(acceptedEncoding);
+            boolean isEncodingEnabled = validateEncodingFromHeaders(headers);
 
             if (requestPath.equals(BASE_PATH) || requestPath.isBlank()) {
                 httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
             } else if (requestPath.startsWith(ECHO_PATH)) {
-                httpResponse = handleEchoCommand(requestPath, isEncodingValid);
+                httpResponse = handleEchoCommand(requestPath, isEncodingEnabled);
             } else if (requestPath.equals(USER_AGENT_PATH)) {
-                httpResponse = handleUserAgentCommand(headers, isEncodingValid);
+                httpResponse = handleUserAgentCommand(headers, isEncodingEnabled);
             } else if (requestPath.startsWith(FILE_PATH)) {
-                httpResponse = handleFileCommand(basePath, requestPath, requestMethod,  isEncodingValid, payload);
+                httpResponse = handleFileCommand(requestPath, requestMethod, isEncodingEnabled, payload);
             }
         } catch (Exception e) {
             System.out.println(Arrays.toString(e.getStackTrace()));
@@ -111,47 +110,58 @@ public class HttpServer {
                 .build();
     }
 
-    private HttpResponse handleEchoCommand(String requestPath, boolean isEncodingValid) {
+    private HttpResponse handleEchoCommand(String requestPath, boolean isEncodingEnabled) {
         String textToEcho = requestPath.substring(requestPath.lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
-        byte[] body = buildResponseBodyBytesHandlingEncoding(textToEcho, isEncodingValid);
+        byte[] body = buildResponseBodyBytesHandlingEncoding(textToEcho, isEncodingEnabled);
         return HttpResponse.builder()
                 .status(buildResponseStatus(STATUS_OK).getBytes(UTF_8))
-                .headers(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, body.length).getBytes(UTF_8))
+                .headers(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingEnabled, body.length).getBytes(UTF_8))
                 .body(body)
                 .build();
     }
 
-    private HttpResponse handleUserAgentCommand(List<String> headers, boolean isEncodingValid) {
+    private HttpResponse handleUserAgentCommand(List<String> headers, boolean isEncodingEnabled) {
         String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
         return HttpResponse.builder()
                 .status(buildResponseStatus(STATUS_OK).getBytes(UTF_8))
-                .headers(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, headerToPrintInBody.length()).getBytes(UTF_8))
+                .headers(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingEnabled, headerToPrintInBody.length()).getBytes(UTF_8))
                 .body(buildResponseBody(headerToPrintInBody).getBytes(UTF_8))
                 .build();
     }
 
-    private HttpResponse handleFileCommand(String basePath, String requestPath, String requestMethod, boolean isEncodingValid, StringBuilder payload) throws IOException {
+    private HttpResponse handleFileCommand(String requestPath, String requestMethod, boolean isEncodingEnabled, StringBuilder payload) throws IOException {
         HttpResponse httpResponse = null;
         String filePath = requestPath.substring(requestPath.lastIndexOf(FILE_PATH) + FILE_PATH.length());
         if (requestMethod.equals(GET_METHOD)) {
-            String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
-            if (!fileContent.isBlank()) {
-                httpResponse = HttpResponse.builder()
-                        .status(buildResponseStatus(STATUS_OK).getBytes(UTF_8))
-                        .headers(buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, isEncodingValid, fileContent.length()).getBytes(UTF_8))
-                        .body(buildResponseBody(fileContent).getBytes(UTF_8))
-                        .build();
-            }
+            httpResponse = handleGetFileCommand(isEncodingEnabled, filePath, httpResponse);
         } else if (requestMethod.equals(POST_METHOD)) {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(basePath + filePath));
-            writer.write(payload.toString());
-            writer.close();
+            httpResponse = handlePostFileCommand(payload, filePath);
+        }
+        return httpResponse;
+    }
+
+    private HttpResponse handleGetFileCommand(boolean isEncodingEnabled, String filePath, HttpResponse httpResponse) throws IOException {
+        String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
+        if (!fileContent.isBlank()) {
             httpResponse = HttpResponse.builder()
-                    .status(buildResponseStatus(STATUS_OK_CREATED).getBytes(UTF_8))
-                    .headers(buildEmptyResponseHeaders().getBytes(UTF_8))
-                    .body(buildEmptyResponseBody().getBytes(UTF_8))
+                    .status(buildResponseStatus(STATUS_OK).getBytes(UTF_8))
+                    .headers(buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, isEncodingEnabled, fileContent.length()).getBytes(UTF_8))
+                    .body(buildResponseBody(fileContent).getBytes(UTF_8))
                     .build();
         }
+        return httpResponse;
+    }
+
+    private HttpResponse handlePostFileCommand(StringBuilder payload, String filePath) throws IOException {
+        HttpResponse httpResponse;
+        BufferedWriter writer = new BufferedWriter(new FileWriter(basePath + filePath));
+        writer.write(payload.toString());
+        writer.close();
+        httpResponse = HttpResponse.builder()
+                .status(buildResponseStatus(STATUS_OK_CREATED).getBytes(UTF_8))
+                .headers(buildEmptyResponseHeaders().getBytes(UTF_8))
+                .body(buildEmptyResponseBody().getBytes(UTF_8))
+                .build();
         return httpResponse;
     }
 }
