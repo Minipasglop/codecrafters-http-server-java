@@ -30,7 +30,7 @@ public class HttpServer {
         this.executorService = Executors.newFixedThreadPool(socketAmount);
     }
 
-    public void run() {
+    public void run(String[] args) {
         try {
             ServerSocket serverSocket = new ServerSocket(port);
             serverSocket.setReuseAddress(true);
@@ -38,7 +38,11 @@ public class HttpServer {
                 Socket clientSocket = serverSocket.accept();
                 executorService.submit(() -> {
                     try {
-                        handleRequest(clientSocket);
+                        String path = "";
+                        if(args.length > 0 ){
+                            path = args[0];
+                        }
+                        handleRequest(clientSocket, path);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -49,7 +53,7 @@ public class HttpServer {
         }
     }
 
-    private void handleRequest(Socket clientSocket) throws IOException {
+    private void handleRequest(Socket clientSocket, String basePath) throws IOException {
         String response = buildResponseStatus(STATUS_NOT_FOUND) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
         try {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -76,7 +80,7 @@ public class HttpServer {
                 response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
             } else if (httpRequest[1].startsWith(FILE_PATH)) {
                 String filePath = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
-                String fileContent = new String(Files.readAllBytes(Paths.get(filePath)));
+                String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
                 if(!fileContent.isBlank() ) {
                     response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, fileContent.length()) + buildResponseBody(fileContent);
                 }

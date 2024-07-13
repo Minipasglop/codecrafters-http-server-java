@@ -14,7 +14,7 @@ public class Main {
         System.out.println("Logs from your program will appear here!");
 
         final HttpServer server = new HttpServer(4221, 10);
-        server.run();
+        server.run(args);
     }
 
 
