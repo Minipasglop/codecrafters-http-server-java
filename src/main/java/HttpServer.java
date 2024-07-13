@@ -1,15 +1,21 @@
 import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static constants.HttpConstants.*;
-import static constants.PathConstants.ECHO_PATH;
-import static constants.PathConstants.USER_AGENT_PATH;
+import static constants.PathConstants.*;
 
 public class HttpServer {
 
@@ -30,14 +36,21 @@ public class HttpServer {
             serverSocket.setReuseAddress(true);
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                executorService.submit(() -> handleRequest(clientSocket));
+                executorService.submit(() -> {
+                    try {
+                        handleRequest(clientSocket);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             }
         } catch (Exception e) {
             System.out.println("Exception: " + e.getMessage());
         }
     }
 
-    private void handleRequest(Socket clientSocket) {
+    private void handleRequest(Socket clientSocket) throws IOException {
+        String response = buildResponseStatus(STATUS_NOT_FOUND) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
         try {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String line = bufferedReader.readLine();
@@ -53,7 +66,6 @@ public class HttpServer {
                 }
                 headers.add(line);
             }
-            String response;
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
                 response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
             } else if (httpRequest[1].startsWith(ECHO_PATH)) {
@@ -62,14 +74,20 @@ public class HttpServer {
             } else if (httpRequest[1].equals(USER_AGENT_PATH)) {
                 String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
                 response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
-            } else {
-                response = buildResponseStatus(STATUS_NOT_FOUND) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
+            } else if (httpRequest[1].startsWith(FILE_PATH)) {
+                String filePath = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
+                String fileContent = new String(Files.readAllBytes(Paths.get(filePath)));
+                if(!fileContent.isBlank() ) {
+                    response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, fileContent.length()) + buildResponseBody(fileContent);
+                }
             }
             System.out.println("accepted new connection");
-            clientSocket.getOutputStream().write(response.getBytes());
-            clientSocket.getOutputStream().flush();
         } catch (Exception e) {
             System.out.println(e.getMessage());
+        } finally {
+            clientSocket.getOutputStream().write(response.getBytes());
+            clientSocket.getOutputStream().flush();
+            clientSocket.close();
         }
     }
 
