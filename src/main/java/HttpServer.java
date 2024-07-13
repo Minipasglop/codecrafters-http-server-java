@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -44,7 +45,7 @@ public class HttpServer {
                 });
             }
         } catch (Exception e) {
-            System.out.println("Exception: " + e.getMessage());
+            System.out.println(Arrays.toString(e.getStackTrace()));
         }
     }
 
@@ -99,7 +100,7 @@ public class HttpServer {
                 }
             }
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            System.out.println(Arrays.toString(e.getStackTrace()));
         } finally {
             clientSocket.getOutputStream().write(response.getBytes());
             clientSocket.getOutputStream().flush();
@@ -115,12 +116,12 @@ public class HttpServer {
         return CRLF;
     }
 
-    private boolean validateEncoding(String encoding){
+    private boolean validateEncoding(String encoding) {
         return "gzip".contains(encoding);
     }
 
     private String buildResponseHeaders(String contentType, String encoding, Integer contentLength) {
-        if (contentType == null || contentLength == null ) {
+        if (contentType == null || contentLength == null) {
             return CRLF;
         }
         String contentTypeHeader = "Content-Type: " + contentType + CRLF;
