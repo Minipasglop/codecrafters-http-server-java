@@ -29,35 +29,37 @@ public class Main {
             // Since the tester restarts your program quite often, setting SO_REUSEADDR
             // ensures that we don't run into 'Address already in use' errors
             serverSocket.setReuseAddress(true);
-            Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            String line = bufferedReader.readLine();
-            String[] httpRequest = line.split(" ", 0);
-            // httpRequest[0] : HTTP Method
-            // httpRequest[1] : Path
-            // httpRequest[2] : HTTP Options
-            List<String> headers = new ArrayList<>();
-            while (true) {
-                line = bufferedReader.readLine();
-                if (line == null || line.isBlank()) {
-                    break;
+            for(int i = 0; i< socketNumber; i++) {
+                Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                String line = bufferedReader.readLine();
+                String[] httpRequest = line.split(" ", 0);
+                // httpRequest[0] : HTTP Method
+                // httpRequest[1] : Path
+                // httpRequest[2] : HTTP Options
+                List<String> headers = new ArrayList<>();
+                while (true) {
+                    line = bufferedReader.readLine();
+                    if (line == null || line.isBlank()) {
+                        break;
+                    }
+                    headers.add(line);
                 }
-                headers.add(line);
+                String response;
+                if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
+                    response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
+                } else if (httpRequest[1].startsWith(ECHO_PATH)) {
+                    String textToEcho = httpRequest[1].substring(httpRequest[1].lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
+                    response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, textToEcho.length()) + buildResponseBody(textToEcho);
+                } else if (httpRequest[1].equals(USER_AGENT_PATH)) {
+                    String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
+                    response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
+                } else {
+                    response = buildResponseStatus(STATUS_NOT_FOUND) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
+                }
+                clientSocket.getOutputStream().write(response.getBytes());
+                System.out.println("accepted new connection");
             }
-            String response;
-            if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
-                response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
-            } else if (httpRequest[1].startsWith(ECHO_PATH)) {
-                String textToEcho = httpRequest[1].substring(httpRequest[1].lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
-                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, textToEcho.length()) + buildResponseBody(textToEcho);
-            } else if (httpRequest[1].equals(USER_AGENT_PATH)) {
-                String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
-                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
-            } else {
-                response = buildResponseStatus(STATUS_NOT_FOUND) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
-            }
-            clientSocket.getOutputStream().write(response.getBytes());
-            System.out.println("accepted new connection");
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         }
