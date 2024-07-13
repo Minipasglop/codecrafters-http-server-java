@@ -88,7 +88,7 @@ public class HttpServer {
                 httpResponse.setBody(buildEmptyResponseBody().getBytes(UTF_8));
             } else if (requestPath.startsWith(ECHO_PATH)) {
                 String textToEcho = requestPath.substring(requestPath.lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
-                byte[] body = buildResponseBodyHandlingEncoding(textToEcho, isEncodingValid);
+                byte[] body = buildResponseBodyBytesHandlingEncoding(textToEcho, isEncodingValid);
                 httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
                 httpResponse.setHeaders(buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, body.length).getBytes(UTF_8));
                 httpResponse.setBody(body);
@@ -144,7 +144,7 @@ public class HttpServer {
         String contentTypeHeader = "Content-Type: " + contentType + CRLF;
         String contentEncodingHeader = handleEncoding ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
         String contentLengthHeader = "Content-Length: " + contentLength + CRLF;
-        return contentTypeHeader + contentEncodingHeader + contentLengthHeader + CRLF;
+        return contentEncodingHeader +  contentTypeHeader + contentLengthHeader + CRLF;
     }
 
     private String buildEmptyResponseBody() {
@@ -155,7 +155,7 @@ public class HttpServer {
         return body;
     }
 
-    private byte[] buildResponseBodyHandlingEncoding(String body, boolean encodedBody) {
+    private byte[] buildResponseBodyBytesHandlingEncoding(String body, boolean encodedBody) {
         if (!encodedBody) {
             return body.getBytes(UTF_8);
         } else {
