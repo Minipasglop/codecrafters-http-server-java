@@ -76,20 +76,21 @@ public class HttpServer {
             }
             System.out.println("Payload : " + payload.toString());
             String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : "";
+            boolean isEncodingValid = validateEncoding(acceptedEncoding);
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
                 response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
             } else if (httpRequest[1].startsWith(ECHO_PATH)) {
                 String textToEcho = httpRequest[1].substring(httpRequest[1].lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
-                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, acceptedEncoding, textToEcho.length()) + buildResponseBody(textToEcho);
+                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, textToEcho.length()) + buildResponseBodyHandlingEncoding(textToEcho, isEncodingValid);
             } else if (httpRequest[1].equals(USER_AGENT_PATH)) {
                 String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
-                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, acceptedEncoding, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
+                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, isEncodingValid, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
             } else if (httpRequest[1].startsWith(FILE_PATH)) {
                 if (httpRequest[0].equals(GET_METHOD)) {
                     String filePath = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
                     String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
                     if (!fileContent.isBlank()) {
-                        response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, acceptedEncoding, fileContent.length()) + buildResponseBody(fileContent);
+                        response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, isEncodingValid, fileContent.length()) + buildResponseBody(fileContent);
                     }
                 } else if (httpRequest[0].equals(POST_METHOD)) {
                     String fileName = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
@@ -121,12 +122,12 @@ public class HttpServer {
         return encodingOptions.contains(SUPPORTED_ENCODING_OPTIONS);
     }
 
-    private String buildResponseHeaders(String contentType, String encoding, Integer contentLength) {
+    private String buildResponseHeaders(String contentType, boolean handleEncoding, Integer contentLength) {
         if (contentType == null || contentLength == null) {
             return CRLF;
         }
         String contentTypeHeader = "Content-Type: " + contentType + CRLF;
-        String contentEncodingHeader = validateEncoding(encoding) ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
+        String contentEncodingHeader = handleEncoding ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
         String contentLengthHeader = "Content-Length: " + contentLength + CRLF;
         return contentTypeHeader + contentEncodingHeader + contentLengthHeader + CRLF;
     }
@@ -137,5 +138,17 @@ public class HttpServer {
 
     private String buildResponseBody(String body) {
         return body;
+    }
+
+    private byte[] buildResponseBodyHandlingEncoding(String body, boolean encodedBody) {
+        if(!encodedBody) {
+            return body.getBytes();
+        } else {
+            try {
+                return GZIPCompression.compress(body);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }
