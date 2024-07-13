@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 
 import static constants.HttpConstants.*;
 import static constants.PathConstants.*;
+import static helper.RequestHelper.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HttpServer {
@@ -59,33 +60,32 @@ public class HttpServer {
                 .build();
         try {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            String line = bufferedReader.readLine();
-            System.out.println("Request : " + line);
-            String[] httpRequest = line.split(" ", 0);
+            String bufferLine = bufferedReader.readLine();
+
+            System.out.println("Request : " + bufferLine);
+            String[] httpRequest = bufferLine.split(" ", 0);
             String requestMethod = httpRequest[0];
             String requestPath = httpRequest[1];
-            String requestOptions = httpRequest[2];
 
             List<String> headers = new ArrayList<>();
             while (true) {
-                line = bufferedReader.readLine();
-                if (line == null || line.isBlank()) {
+                bufferLine = bufferedReader.readLine();
+                if (bufferLine == null || bufferLine.isBlank()) {
                     break;
                 }
-                headers.add(line);
+                headers.add(bufferLine);
             }
-            System.out.println("Headers : " + headers);
+
             StringBuilder payload = new StringBuilder();
             while (bufferedReader.ready()) {
                 payload.append((char) bufferedReader.read());
             }
-            System.out.println("Payload : " + payload.toString());
+
             String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : "";
             boolean isEncodingValid = validateEncoding(acceptedEncoding);
-            if (requestPath.equals("/") || requestPath.isBlank()) {
+
+            if (requestPath.equals(BASE_PATH) || requestPath.isBlank()) {
                 httpResponse.setStatus(buildResponseStatus(STATUS_OK).getBytes(UTF_8));
-                httpResponse.setHeaders(buildEmptyResponseHeaders().getBytes(UTF_8));
-                httpResponse.setBody(buildEmptyResponseBody().getBytes(UTF_8));
             } else if (requestPath.startsWith(ECHO_PATH)) {
                 String textToEcho = requestPath.substring(requestPath.lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
                 byte[] body = buildResponseBodyBytesHandlingEncoding(textToEcho, isEncodingValid);
@@ -111,8 +111,6 @@ public class HttpServer {
                     writer.write(payload.toString());
                     writer.close();
                     httpResponse.setStatus(buildResponseStatus(STATUS_OK_CREATED).getBytes(UTF_8));
-                    httpResponse.setHeaders(buildEmptyResponseHeaders().getBytes(UTF_8));
-                    httpResponse.setBody(buildEmptyResponseBody().getBytes(UTF_8));
                 }
             }
         } catch (Exception e) {
@@ -121,49 +119,6 @@ public class HttpServer {
             clientSocket.getOutputStream().write(httpResponse.getStatus());
             clientSocket.getOutputStream().write(httpResponse.getHeaders());
             clientSocket.getOutputStream().write(httpResponse.getBody());
-        }
-    }
-
-    private String buildResponseStatus(String status) {
-        return HTTP_PROTOCOL_VERSION + " " + status + CRLF;
-    }
-
-    private String buildEmptyResponseHeaders() {
-        return CRLF;
-    }
-
-    private boolean validateEncoding(String encoding) {
-        List<String> encodingOptions = Arrays.stream(encoding.split(", ", 0)).toList();
-        return encodingOptions.contains(SUPPORTED_ENCODING_OPTIONS);
-    }
-
-    private String buildResponseHeaders(String contentType, boolean handleEncoding, Integer contentLength) {
-        if (contentType == null || contentLength == null) {
-            return CRLF;
-        }
-        String contentTypeHeader = "Content-Type: " + contentType + CRLF;
-        String contentEncodingHeader = handleEncoding ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
-        String contentLengthHeader = "Content-Length: " + contentLength + CRLF;
-        return contentEncodingHeader +  contentTypeHeader + contentLengthHeader + CRLF;
-    }
-
-    private String buildEmptyResponseBody() {
-        return "";
-    }
-
-    private String buildResponseBody(String body) {
-        return body;
-    }
-
-    private byte[] buildResponseBodyBytesHandlingEncoding(String body, boolean encodedBody) {
-        if (!encodedBody) {
-            return body.getBytes(UTF_8);
-        } else {
-            try {
-                return GZIPCompression.compress(body);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
         }
     }
 }
