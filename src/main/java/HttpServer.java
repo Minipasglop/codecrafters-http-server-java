@@ -33,7 +33,6 @@ public class HttpServer {
             serverSocket.setReuseAddress(true);
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                handleRequest(clientSocket);
                 executorService.submit(() -> handleRequest(clientSocket));
             }
         } catch (Exception e) {
