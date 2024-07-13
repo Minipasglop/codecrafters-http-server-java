@@ -49,10 +49,12 @@ public class HttpServer {
     }
 
     private void handleRequest(Socket clientSocket, String basePath) throws IOException {
+        System.out.println("accepted new connection");
         String response = buildResponseStatus(STATUS_NOT_FOUND) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
         try {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             String line = bufferedReader.readLine();
+            System.out.println("Request : " + line);
             String[] httpRequest = line.split(" ", 0);
             // httpRequest[0] : HTTP Method
             // httpRequest[1] : Path
@@ -66,10 +68,12 @@ public class HttpServer {
                 }
                 headers.add(line);
             }
+            System.out.println("Headers : " + headers);
             StringBuilder payload = new StringBuilder();
             while (bufferedReader.ready()) {
                 payload.append((char) bufferedReader.read());
             }
+            System.out.println("Payload : " + payload.toString());
             String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : null;
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
                 response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
@@ -94,7 +98,6 @@ public class HttpServer {
                     response = buildResponseStatus(STATUS_OK_CREATED) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
                 }
             }
-            System.out.println("accepted new connection");
         } catch (Exception e) {
             System.out.println(e.getMessage());
         } finally {
