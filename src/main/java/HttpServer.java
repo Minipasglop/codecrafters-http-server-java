@@ -7,16 +7,13 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static constants.HttpConstants.*;
+import static constants.PathConstants.ECHO_PATH;
+import static constants.PathConstants.USER_AGENT_PATH;
+
 public class HttpServer {
 
-    private final String CRLF = "\r\n";
-    private final String STATUS_OK = "200 OK";
-    private final String STATUS_NOT_FOUND = "404 Not Found";
-    private final String ECHO_PATH = "/echo/";
-    private final String USER_AGENT_PATH = "/user-agent";
-    private final String HTTP_PROTOCOL_VERSION = "HTTP/1.1";
     private final String USER_AGENT_HEADER_PREFIX = "User-Agent: ";
-    private final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
 
     private final int port;
 
