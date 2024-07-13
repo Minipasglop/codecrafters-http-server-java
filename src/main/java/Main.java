@@ -8,14 +8,16 @@ import java.util.List;
 
 public class Main {
 
-    public static final String CRLF = "\r\n";
-    public static final String STATUS_OK = "200 OK";
-    public static final String STATUS_NOT_FOUND = "404 Not Found";
-    public static final String ECHO_PATH = "/echo/";
-    public static final String USER_AGENT_PATH = "/user-agent";
-    public static final String HTTP_PROTOCOL_VERSION = "HTTP/1.1";
-    public static final String USER_AGENT_HEADER_PREFIX = "User-Agent: ";
-    public static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
+    private static final String CRLF = "\r\n";
+    private static final String STATUS_OK = "200 OK";
+    private static final String STATUS_NOT_FOUND = "404 Not Found";
+    private static final String ECHO_PATH = "/echo/";
+    private static final String USER_AGENT_PATH = "/user-agent";
+    private static final String HTTP_PROTOCOL_VERSION = "HTTP/1.1";
+    private static final String USER_AGENT_HEADER_PREFIX = "User-Agent: ";
+    private static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
+
+    private static final int socketNumber = 25;
 
     public static void main(String[] args) {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
