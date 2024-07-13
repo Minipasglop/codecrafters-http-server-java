@@ -7,6 +7,9 @@ import java.net.Socket;
 public class Main {
 
     public static final String CRLF = "\r\n";
+    public static final String STATUS_OK = "200 OK";
+    public static final String STATUS_NOT_FOUND = "404 Not Found";
+    public static final String ECHO_PATH = "/echo/";
 
     public static void main(String[] args) {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -24,11 +27,15 @@ public class Main {
             // httpRequest[0] : HTTP Method
             // httpRequest[1] : Path
             // httpRequest[2] : HTTP Options
-            String response = "";
+            String response;
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
-                response = buildResponseStatus("200 OK") + buildResponseHeaders("") + buildResponseBody("");
-            } else {
-                response = buildResponseStatus("404 Not Found") + buildResponseHeaders("") + buildResponseBody("");
+                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders("") + buildResponseBody("");
+            } else if (httpRequest[1].startsWith(ECHO_PATH)) {
+                String textToEcho = httpRequest[1].substring(httpRequest[1].lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
+                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders("Content-Type: text/plain\r\nContent-Length: " + textToEcho.length()+"\r\n") + buildResponseBody(textToEcho);
+            }
+            else {
+                response = buildResponseStatus(STATUS_NOT_FOUND) + buildResponseHeaders("") + buildResponseBody("");
             }
             clientSocket.getOutputStream().write(response.getBytes());
             System.out.println("accepted new connection");
@@ -46,6 +53,6 @@ public class Main {
     }
 
     private static String buildResponseBody(String body) {
-        return body + CRLF;
+        return body;
     }
 }
