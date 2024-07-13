@@ -10,9 +10,12 @@ public class GZIPCompression {
         if (str == null || str.isEmpty()) {
             return null;
         }
-        ByteArrayOutputStream obj = new ByteArrayOutputStream();
-        GZIPOutputStream gzip = new GZIPOutputStream(obj);
-        gzip.write(str.getBytes(UTF_8));
-        return obj.toByteArray();
+        byte[] dataToCompress = str.getBytes(UTF_8);
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream(dataToCompress.length);
+        GZIPOutputStream gzip = new GZIPOutputStream(byteStream);
+        gzip.write(dataToCompress);
+        gzip.close();
+        byteStream.close();
+        return byteStream.toByteArray();
     }
 }
