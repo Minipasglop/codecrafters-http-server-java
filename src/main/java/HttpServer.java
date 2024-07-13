@@ -75,7 +75,7 @@ public class HttpServer {
                 payload.append((char) bufferedReader.read());
             }
             System.out.println("Payload : " + payload.toString());
-            String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : null;
+            String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : "";
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
                 response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
             } else if (httpRequest[1].startsWith(ECHO_PATH)) {
@@ -117,7 +117,7 @@ public class HttpServer {
     }
 
     private boolean validateEncoding(String encoding) {
-        return "gzip".contains(encoding);
+        return SUPPORTED_ENCODING_OPTIONS.contains(encoding);
     }
 
     private String buildResponseHeaders(String contentType, String encoding, Integer contentLength) {
