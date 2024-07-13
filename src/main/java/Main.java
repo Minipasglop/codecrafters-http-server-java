@@ -17,7 +17,7 @@ public class Main {
     private static final String USER_AGENT_HEADER_PREFIX = "User-Agent: ";
     private static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
 
-    private static final int socketNumber = 25;
+    private static final int socketNumber = 10;
 
     public static void main(String[] args) {
         // You can use print statements as follows for debugging, they'll be visible when running tests.
