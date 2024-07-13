@@ -143,7 +143,7 @@ public class HttpServer {
         }
         String contentTypeHeader = "Content-Type: " + contentType + CRLF;
         String contentEncodingHeader = handleEncoding ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
-        String contentLengthHeader = "Content-Length: " + contentLength;
+        String contentLengthHeader = "Content-Length: " + contentLength + CRLF;
         return contentTypeHeader + contentEncodingHeader + contentLengthHeader + CRLF;
     }
 
