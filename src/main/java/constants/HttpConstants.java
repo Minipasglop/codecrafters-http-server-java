@@ -10,6 +10,9 @@ public class HttpConstants {
     public static final String CONTENT_TYPE_TEXT_PLAIN = "text/plain";
     public static final String CONTENT_TYPE_OCTET_STREAM = "application/octet-stream";
 
+    public static final String ACCEPT_ENCODING_HEADER = "Accept-Encoding: ";
+    public static final String USER_AGENT_HEADER_PREFIX = "User-Agent: ";
+
     public static final String GET_METHOD = "GET";
     public static final String POST_METHOD = "POST";
 

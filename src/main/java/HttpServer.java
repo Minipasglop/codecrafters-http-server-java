@@ -14,8 +14,6 @@ import static constants.PathConstants.*;
 
 public class HttpServer {
 
-    private final String USER_AGENT_HEADER_PREFIX = "User-Agent: ";
-
     private final int port;
 
     private final ExecutorService executorService;
@@ -72,20 +70,21 @@ public class HttpServer {
             while (bufferedReader.ready()) {
                 payload.append((char) bufferedReader.read());
             }
+            String acceptedEncoding = headers.stream().anyMatch(header -> header.startsWith(ACCEPT_ENCODING_HEADER)) ? headers.stream().filter(header -> header.startsWith(ACCEPT_ENCODING_HEADER)).findAny().get().substring(ACCEPT_ENCODING_HEADER.length()) : null;
             if (httpRequest[1].equals("/") || httpRequest[1].isBlank()) {
                 response = buildResponseStatus(STATUS_OK) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
             } else if (httpRequest[1].startsWith(ECHO_PATH)) {
                 String textToEcho = httpRequest[1].substring(httpRequest[1].lastIndexOf(ECHO_PATH) + ECHO_PATH.length());
-                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, textToEcho.length()) + buildResponseBody(textToEcho);
+                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, acceptedEncoding, textToEcho.length()) + buildResponseBody(textToEcho);
             } else if (httpRequest[1].equals(USER_AGENT_PATH)) {
                 String headerToPrintInBody = headers.stream().anyMatch(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)) ? headers.stream().filter(header -> header.startsWith(USER_AGENT_HEADER_PREFIX)).findAny().get().substring(USER_AGENT_HEADER_PREFIX.length()) : "";
-                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
+                response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_TEXT_PLAIN, acceptedEncoding, headerToPrintInBody.length()) + buildResponseBody(headerToPrintInBody);
             } else if (httpRequest[1].startsWith(FILE_PATH)) {
                 if (httpRequest[0].equals(GET_METHOD)) {
                     String filePath = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
                     String fileContent = new String(Files.readAllBytes(Paths.get(basePath + filePath)));
                     if (!fileContent.isBlank()) {
-                        response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, fileContent.length()) + buildResponseBody(fileContent);
+                        response = buildResponseStatus(STATUS_OK) + buildResponseHeaders(CONTENT_TYPE_OCTET_STREAM, acceptedEncoding, fileContent.length()) + buildResponseBody(fileContent);
                     }
                 } else if (httpRequest[0].equals(POST_METHOD)) {
                     String fileName = httpRequest[1].substring(httpRequest[1].lastIndexOf(FILE_PATH) + FILE_PATH.length());
@@ -113,13 +112,18 @@ public class HttpServer {
         return CRLF;
     }
 
-    private String buildResponseHeaders(String contentType, Integer contentLength) {
-        if (contentType == null || contentLength == null) {
+    private boolean validateEncoding(String encoding){
+        return "gzip".contains(encoding);
+    }
+
+    private String buildResponseHeaders(String contentType, String encoding, Integer contentLength) {
+        if (contentType == null || contentLength == null ) {
             return CRLF;
         }
         String contentTypeHeader = "Content-Type: " + contentType + CRLF;
+        String contentEncodingHeader = validateEncoding(encoding) ? "Content-Encoding:" + encoding + CRLF : "";
         String contentLengthHeader = "Content-Length: " + contentLength + CRLF;
-        return contentTypeHeader + contentLengthHeader + CRLF;
+        return contentTypeHeader + contentEncodingHeader + contentLengthHeader + CRLF;
     }
 
     private String buildEmptyResponseBody() {
