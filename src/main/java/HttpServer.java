@@ -117,7 +117,8 @@ public class HttpServer {
     }
 
     private boolean validateEncoding(String encoding) {
-        return SUPPORTED_ENCODING_OPTIONS.contains(encoding);
+        List<String> encodingOptions = Arrays.stream(encoding.split(", ", 0)).toList();
+        return encodingOptions.contains(SUPPORTED_ENCODING_OPTIONS);
     }
 
     private String buildResponseHeaders(String contentType, String encoding, Integer contentLength) {
@@ -125,7 +126,7 @@ public class HttpServer {
             return CRLF;
         }
         String contentTypeHeader = "Content-Type: " + contentType + CRLF;
-        String contentEncodingHeader = validateEncoding(encoding) ? "Content-Encoding:" + encoding + CRLF : "";
+        String contentEncodingHeader = validateEncoding(encoding) ? "Content-Encoding: " + SUPPORTED_ENCODING_OPTIONS + CRLF : "";
         String contentLengthHeader = "Content-Length: " + contentLength + CRLF;
         return contentTypeHeader + contentEncodingHeader + contentLengthHeader + CRLF;
     }
