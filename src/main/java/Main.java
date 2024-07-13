@@ -29,7 +29,7 @@ public class Main {
             // Since the tester restarts your program quite often, setting SO_REUSEADDR
             // ensures that we don't run into 'Address already in use' errors
             serverSocket.setReuseAddress(true);
-            for(int i = 0; i< socketNumber; i++) {
+            for(int i = 0; i < socketNumber; i++) {
                 Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 String line = bufferedReader.readLine();
@@ -57,8 +57,11 @@ public class Main {
                 } else {
                     response = buildResponseStatus(STATUS_NOT_FOUND) + buildEmptyResponseHeaders() + buildEmptyResponseBody();
                 }
-                clientSocket.getOutputStream().write(response.getBytes());
                 System.out.println("accepted new connection");
+                clientSocket.getOutputStream().write(response.getBytes());
+                System.out.println("wrote response : " + response);
+                clientSocket.close();
+                System.out.println("closed new connection");
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
